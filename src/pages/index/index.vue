@@ -2,20 +2,26 @@
 //
 import CustomNavbar from '@/components/CustomNavbar.vue'
 import CategoryPanel from '@/components/CategoryPanel.vue'
-import { getHomeCategoryAPI } from '@/services/home'
-import type { CategoryItem } from '@/types/home'
-let list: CategoryItem[]
-
+import HotPanel from '@/components/HotPanel.vue'
+import { getHomeCategoryAPI, getHomeHotAPI } from '@/services/home'
+import type { CategoryItem, HotItem } from '@/types/home'
+let CategoryPanellist: CategoryItem[]
+let hotlist: HotItem[]
 const getCategory = async () => {
   const res = await getHomeCategoryAPI()
-  list = res.result
+  CategoryPanellist = res.result
+}
+const getHot = async () => {
+  const res = await getHomeHotAPI()
+  hotlist = res.result
 }
 </script>
 
 <template>
   <view class="index">
     <CustomNavbar></CustomNavbar>
-    <CategoryPanel v-bind:list="list"></CategoryPanel>
+    <CategoryPanel v-bind:list="CategoryPanellist"></CategoryPanel>
+    <HotPanel v-bind:list="hotlist"></HotPanel>
   </view>
 </template>
 
