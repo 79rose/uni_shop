@@ -1,5 +1,6 @@
 <script setup lang="ts">
 //
+import Skeleton from './Skeleton.vue'
 import CustomNavbar from '@/components/CustomNavbar.vue'
 import CategoryPanel from '@/components/CategoryPanel.vue'
 import HotPanel from '@/components/HotPanel.vue'
@@ -30,7 +31,7 @@ const getHot = async () => {
 const { myguess, onScrolltolower } = useGuessList()
 let isloading = ref(false)
 onLoad(async () => {
-  isloading.value = false
+  isloading.value = true
   await Promise.all([getCategory(), getHot(), getswiper()])
   isloading.value = false
 })
@@ -48,7 +49,10 @@ const onRefresherrefresh = async () => {
 </script>
 
 <template>
-  <view class="viewport">
+  <view v-if="isloading">
+    <Skeleton></Skeleton>
+  </view>
+  <view v-else class="viewport">
     <CustomNavbar></CustomNavbar>
 
     <scroll-view refresher-enabled @refresherrefresh="onRefresherrefresh" :refresher-triggered="isTriggered"
