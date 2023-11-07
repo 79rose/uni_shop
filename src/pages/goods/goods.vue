@@ -1,5 +1,6 @@
 // src/pages/goods/goods.vue
 <script setup lang="ts">
+import Skeleton from './Skeleton.vue'
 import ServicePanel from '@/components/ServicePanel.vue'
 import AddressPanel from '@/components/AddressPanel.vue'
 import { getGoodsByIdAPI } from '@/services/goods'
@@ -11,6 +12,7 @@ const { safeAreaInsets } = uni.getSystemInfoSync()
 const query = defineProps<{
   id: string
 }>()
+const isfinish = ref(false)
 const goods = ref<GoodsResult>()
 
 const getGoodsByid = async () => {
@@ -27,8 +29,9 @@ const onTapImage = (url: string) => {
     urls: goods.value!.mainPictures,
   })
 }
-onLoad(() => {
-  getGoodsByid()
+onLoad(async () => {
+  await getGoodsByid()
+  isfinish.value = true
 })
 const popup = ref<{
   open: (type?: UniHelper.UniPopupType) => void
@@ -46,7 +49,7 @@ const openPopup = (name: typeof popupName.value) => {
 </script>
 
 <template>
-  <scroll-view scroll-y class="viewport">
+  <scroll-view scroll-y class="viewport" v-if="isfinish">
     <!-- 基本信息 -->
     <view class="goods">
       <!-- 商品主图 -->
@@ -139,7 +142,7 @@ const openPopup = (name: typeof popupName.value) => {
   </scroll-view>
 
   <!-- 用户操作 -->
-  <view class="toolbar" :style="{ paddingBottom: safeAreaInsets?.bottom + 'px' }">
+  <view class="toolbar" :style="{ paddingBottom: safeAreaInsets?.bottom + 'px' }" v-if="isfinish">
     <view class="icons">
       <button class="icons-button"><text class="icon-heart"></text>收藏</button>
       <button class="icons-button" open-type="contact">
@@ -154,6 +157,8 @@ const openPopup = (name: typeof popupName.value) => {
       <view class="buynow"> 立即购买 </view>
     </view>
   </view>
+
+  <Skeleton v-else></Skeleton>
 </template>
 
 <style lang="scss">
