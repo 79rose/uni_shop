@@ -1,10 +1,48 @@
 // src/pages/goods/goods.vue
 <script setup lang="ts">
+import ServicePanel from '@/components/ServicePanel.vue'
+import AddressPanel from '@/components/AddressPanel.vue'
+import { getGoodsByIdAPI } from '@/services/goods'
+import type { GoodsResult } from '@/types/good'
+import { ref } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 // 获取屏幕边界到安全区域距离
 const { safeAreaInsets } = uni.getSystemInfoSync()
 const query = defineProps<{
   id: string
 }>()
+const goods = ref<GoodsResult>()
+
+const getGoodsByid = async () => {
+  const res = await getGoodsByIdAPI(query.id)
+  goods.value = res.result
+}
+const currentIndex = ref(0)
+const onChange: UniHelper.SwiperOnChange = (ev) => {
+  currentIndex.value = ev.detail.current
+}
+const onTapImage = (url: string) => {
+  uni.previewImage({
+    current: url,
+    urls: goods.value!.mainPictures,
+  })
+}
+onLoad(() => {
+  getGoodsByid()
+})
+const popup = ref<{
+  open: (type?: UniHelper.UniPopupType) => void
+  close: () => void
+}>()
+
+const popupName = ref<'address' | 'service'>()
+
+const openPopup = (name: typeof popupName.value) => {
+  // 修改弹出层名称
+  popupName.value = name
+  // 打开弹出层
+  popup.value?.open()
+}
 </script>
 
 <template>
@@ -13,27 +51,15 @@ const query = defineProps<{
     <view class="goods">
       <!-- 商品主图 -->
       <view class="preview">
-        <swiper circular>
-          <swiper-item>
-            <image mode="aspectFill" src="https://yanxuan-item.nosdn.127.net/99c83709ca5f9fd5c5bb35d207ad7822.png" />
-          </swiper-item>
-          <swiper-item>
-            <image mode="aspectFill" src="https://yanxuan-item.nosdn.127.net/f9107d47c08f0b99c097e30055c39e1a.png" />
-          </swiper-item>
-          <swiper-item>
-            <image mode="aspectFill" src="https://yanxuan-item.nosdn.127.net/754c56785cc8c39f7414752f62d79872.png" />
-          </swiper-item>
-          <swiper-item>
-            <image mode="aspectFill" src="https://yanxuan-item.nosdn.127.net/ef16f8127610ef56a2a10466d6dae157.jpg" />
-          </swiper-item>
-          <swiper-item>
-            <image mode="aspectFill" src="https://yanxuan-item.nosdn.127.net/1f0c3f5d32b0e804deb9b3d56ea6c3b2.png" />
+        <swiper @change="onChange" circular>
+          <swiper-item v-for="item in goods?.mainPictures" :key="item">
+            <image @tap="onTapImage(item)" mode="aspectFill" :src="item" />
           </swiper-item>
         </swiper>
         <view class="indicator">
-          <text class="current">1</text>
+          <text class="current">{{ currentIndex + 1 }}</text>
           <text class="split">/</text>
-          <text class="total">5</text>
+          <text class="total">{{ goods?.mainPictures.length }}</text>
         </view>
       </view>
 
@@ -53,14 +79,18 @@ const query = defineProps<{
           <text class="label">选择</text>
           <text class="text ellipsis"> 请选择商品规格 </text>
         </view>
-        <view class="item arrow">
+        <view @tap="openPopup('address')" class="item arrow">
           <text class="label">送至</text>
           <text class="text ellipsis"> 请选择收获地址 </text>
         </view>
-        <view class="item arrow">
+        <view @tap="openPopup('service')" class="item arrow">
           <text class="label">服务</text>
           <text class="text ellipsis"> 无忧退 快速退款 免费包邮 </text>
         </view>
+        <uni-popup ref="popup" type="bottom" background-color="#fff">
+          <AddressPanel v-if="popupName === 'address'" @close="popup?.close()" />
+          <ServicePanel v-if="popupName === 'service'" @close="popup?.close()" />
+        </uni-popup>
       </view>
     </view>
 
@@ -88,18 +118,20 @@ const query = defineProps<{
     </view>
 
     <!-- 同类推荐 -->
+
+    <!-- 同类推荐 -->
     <view class="similar panel">
       <view class="title">
         <text>同类推荐</text>
       </view>
       <view class="content">
-        <navigator v-for="item in 4" :key="item" class="goods" hover-class="none" :url="`/pages/goods/goods?id=`">
-          <image class="image" mode="aspectFill"
-            src="https://yanxuan-item.nosdn.127.net/e0cea368f41da1587b3b7fc523f169d7.png"></image>
-          <view class="name ellipsis">简约山形纹全棉提花毛巾</view>
+        <navigator v-for="item in goods?.similarProducts" :key="item.id" class="goods" hover-class="none"
+          :url="`/pages/goods/goods?id=${item.id}`">
+          <image class="image" mode="aspectFill" :src="item.picture"></image>
+          <view class="name ellipsis">{{ item.name }}</view>
           <view class="price">
             <text class="symbol">¥</text>
-            <text class="number">18.50</text>
+            <text class="number">{{ item.price }}</text>
           </view>
         </navigator>
       </view>
