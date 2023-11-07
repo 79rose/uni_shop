@@ -25,3 +25,4 @@ export type CategoryChildItem = {
   /** 二级分类图片 */
   picture: string
 }
+
