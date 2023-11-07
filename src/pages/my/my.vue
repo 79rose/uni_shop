@@ -1,6 +1,7 @@
-// src/pages/my/my.vue
-
 <script setup lang="ts">
+import { useGuessList } from '@/composables'
+import { useMemberStore } from '@/stores'
+
 // 获取屏幕边界到安全区域距离
 const { safeAreaInsets } = uni.getSystemInfoSync()
 // 订单选项
@@ -10,20 +11,24 @@ const orderTypes = [
   { type: 3, text: '待收货', icon: 'icon-check' },
   { type: 4, text: '待评价', icon: 'icon-comment' },
 ]
+// 获取会员信息
+const memberStore = useMemberStore()
+const { myguess, onScrolltolower } = useGuessList()
 </script>
 
 <template>
-  <scroll-view class="viewport" scroll-y enable-back-to-top>
+  <scroll-view class="viewport" scroll-y enable-back-to-top @scrolltolower="onScrolltolower">
     <!-- 个人资料 -->
     <view class="profile" :style="{ paddingTop: safeAreaInsets!.top + 'px' }">
       <!-- 情况1：已登录 -->
-      <view class="overview" v-if="false">
+      <view class="overview" v-if="memberStore.profile">
         <navigator url="/pagesMember/profile/profile" hover-class="none">
-          <image class="avatar" mode="aspectFill"
-            src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/avatar_3.jpg"></image>
+          <image class="avatar" :src="memberStore.profile.avatar" mode="aspectFill"></image>
         </navigator>
         <view class="meta">
-          <view class="nickname"> 黑马程序员 </view>
+          <view class="nickname">
+            {{ memberStore.profile.nickname || memberStore.profile.account }}
+          </view>
           <navigator class="extra" url="/pagesMember/profile/profile" hover-class="none">
             <text class="update">更新头像昵称</text>
           </navigator>
@@ -39,13 +44,13 @@ const orderTypes = [
         <view class="meta">
           <navigator url="/pages/login/login" hover-class="none" class="nickname">
             未登录
+            <view class="extra">
+              <text class="tips">点击登录账号</text>
+            </view>
           </navigator>
-          <view class="extra">
-            <text class="tips">点击登录账号</text>
-          </view>
         </view>
       </view>
-      <navigator class="settings" url="/pagesMember/settings/settings" hover-class="none">
+      <navigator class="settings" url="/pagesMember/setting/setting" hover-class="none">
         设置
       </navigator>
     </view>
@@ -69,7 +74,7 @@ const orderTypes = [
     </view>
     <!-- 猜你喜欢 -->
     <view class="guess">
-      <XtxGuess ref="guessRef" />
+      <MyGuess ref="myguess" />
     </view>
   </scroll-view>
 </template>
@@ -134,6 +139,7 @@ page {
   .extra {
     display: flex;
     font-size: 20rpx;
+    margin-top: 10rpx;
   }
 
   .tips {
