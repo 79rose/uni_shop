@@ -1,37 +1,35 @@
 <script setup lang="ts">
-//
+import { onShow } from '@dcloudio/uni-app'
+import { getMemberAddressAPI } from '@/services/address'
+import { ref } from 'vue'
+import type { AddressItem } from '@/types/address'
+
+const addressList = ref<AddressItem[]>([])
+const getAddressList = async () => {
+  const res = await getMemberAddressAPI()
+  addressList.value = res.result
+}
+onShow(() => {
+  getAddressList()
+})
 </script>
 
 <template>
   <view class="viewport">
     <!-- 地址列表 -->
     <scroll-view class="scroll-view" scroll-y>
-      <view v-if="true" class="address">
+      <view v-if="addressList.length" class="address">
         <view class="address-list">
           <!-- 收货地址项 -->
-          <view class="item">
+          <view class="item" v-for="item in addressList" :key="item.id">
             <view class="item-content">
               <view class="user">
-                黑马小王子
-                <text class="contact">13111111111</text>
-                <text v-if="true" class="badge">默认</text>
+                {{ item.receiver }}
+                <text class="contact">{{ item.contact }}</text>
+                <text v-if="item.isDefault" class="badge">默认</text>
               </view>
-              <view class="locate">广东省 广州市 天河区 黑马程序员</view>
-              <navigator class="edit" hover-class="none" :url="`/pagesMember/address-form/address-form?id=1`">
-                修改
-              </navigator>
-            </view>
-          </view>
-          <!-- 收货地址项 -->
-          <view class="item">
-            <view class="item-content">
-              <view class="user">
-                黑马小公主
-                <text class="contact">13222222222</text>
-                <text v-if="false" class="badge">默认</text>
-              </view>
-              <view class="locate">北京市 北京市 顺义区 黑马程序员</view>
-              <navigator class="edit" hover-class="none" :url="`/pagesMember/address-form/address-form?id=2`">
+              <view class="locate">{{ item.fullLocation }}</view>
+              <navigator class="edit" hover-class="none" :url="`/pagesMember/address-form/address-form?id=${item.id}`">
                 修改
               </navigator>
             </view>
