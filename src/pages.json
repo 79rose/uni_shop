@@ -107,12 +107,24 @@
 						"navigationBarTitleText": "设置"
 					}
 				},
-      	{
+				{
 					"path": "profile/profile",
 					"style": {
-				    "navigationStyle": "custom",
-			    	"navigationBarTextStyle": "white",
+						"navigationStyle": "custom",
+						"navigationBarTextStyle": "white",
 						"navigationBarTitleText": "个人信息"
+					}
+				},
+				{
+					"path": "address/address",
+					"style": {
+						"navigationBarTitleText": "地址"
+					}
+				},
+        	{
+					"path": "address-form/address-form",
+					"style": {
+						"navigationBarTitleText": ""
 					}
 				}
 			]
@@ -121,9 +133,9 @@
 	"preloadRule": {
 		"pages/my/my": {
 			"network": "all",
-      "packages": [
-       "pagesMember"
-     ]
+			"packages": [
+				"pagesMember"
+			]
 		}
 	}
 }
