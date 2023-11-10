@@ -1,62 +1,152 @@
-// src/pages/goods/goods.vue
 <script setup lang="ts">
-import Skeleton from './Skeleton.vue'
-import ServicePanel from '@/components/ServicePanel.vue'
-import AddressPanel from '@/components/AddressPanel.vue'
+import type {
+  SkuPopupEvent,
+  SkuPopupInstance,
+  SkuPopupLocaldata,
+} from '@/components/vk-data-goods-sku-popup/vk-data-goods-sku-popup'
+import { postMemberCartAPI } from '@/services/cart'
 import { getGoodsByIdAPI } from '@/services/goods'
 import type { GoodsResult } from '@/types/good'
-import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { computed, ref } from 'vue'
+import AddressPanel from '@/components/AddressPanel.vue'
+import ServicePanel from '@/components/ServicePanel.vue'
+import Skeleton from './Skeleton.vue'
 // 获取屏幕边界到安全区域距离
 const { safeAreaInsets } = uni.getSystemInfoSync()
+
+// 接收页面参数
 const query = defineProps<{
   id: string
 }>()
-const isfinish = ref(false)
-const goods = ref<GoodsResult>()
 
-const getGoodsByid = async () => {
+// 获取商品详情信息
+const goods = ref<GoodsResult>()
+const getGoodsByIdData = async () => {
   const res = await getGoodsByIdAPI(query.id)
   goods.value = res.result
+  // SKU组件所需格式
+  localdata.value = {
+    _id: res.result.id,
+    name: res.result.name,
+    goods_thumb: res.result.mainPictures[0],
+    spec_list: res.result.specs.map((v) => {
+      return {
+        name: v.name,
+        list: v.values,
+      }
+    }),
+    sku_list: res.result.skus.map((v) => {
+      return {
+        _id: v.id,
+        goods_id: res.result.id,
+        goods_name: res.result.name,
+        image: v.picture,
+        price: v.price * 100, // 注意：需要乘以 100
+        stock: v.inventory,
+        sku_name_arr: v.specs.map((vv) => vv.valueName),
+      }
+    }),
+  }
 }
+const isFinish = ref(false)
+// 页面加载
+onLoad(async () => {
+  await getGoodsByIdData()
+  isFinish.value = true
+})
+
+// 轮播图变化时
 const currentIndex = ref(0)
 const onChange: UniHelper.SwiperOnChange = (ev) => {
   currentIndex.value = ev.detail.current
 }
+
+// 点击图片时
 const onTapImage = (url: string) => {
+  // 大图预览
   uni.previewImage({
     current: url,
     urls: goods.value!.mainPictures,
   })
 }
-onLoad(async () => {
-  await getGoodsByid()
-  isfinish.value = true
-})
+
+// uni-ui 弹出层组件 ref
 const popup = ref<{
   open: (type?: UniHelper.UniPopupType) => void
   close: () => void
 }>()
 
+// 弹出层条件渲染
 const popupName = ref<'address' | 'service'>()
-
 const openPopup = (name: typeof popupName.value) => {
   // 修改弹出层名称
   popupName.value = name
-  // 打开弹出层
   popup.value?.open()
+}
+// 是否显示SKU组件
+const isShowSku = ref(false)
+// 商品信息
+const localdata = ref({} as SkuPopupLocaldata)
+// 按钮模式
+enum SkuMode {
+  Both = 1,
+  Cart = 2,
+  Buy = 3,
+}
+const mode = ref<SkuMode>(SkuMode.Cart)
+// 打开SKU弹窗修改按钮模式
+const openSkuPopup = (val: SkuMode) => {
+  // 显示SKU弹窗
+  isShowSku.value = true
+  // 修改按钮模式
+  mode.value = val
+}
+// SKU组件实例
+const skuPopupRef = ref<SkuPopupInstance>()
+// 计算被选中的值
+const selectArrText = computed(() => {
+  return skuPopupRef.value?.selectArr?.join(' ').trim() || '请选择商品规格'
+})
+// 加入购物车事件
+const onAddCart = async (ev: SkuPopupEvent) => {
+  await postMemberCartAPI({ skuId: ev._id, count: ev.buy_num })
+  uni.showToast({ title: '添加成功' })
+  isShowSku.value = false
+}
+// 立即购买
+const onBuyNow = (ev: SkuPopupEvent) => {
+  uni.navigateTo({ url: `/pagesOrder/create/create?skuId=${ev._id}&count=${ev.buy_num}` })
 }
 </script>
 
 <template>
-  <scroll-view scroll-y class="viewport" v-if="isfinish">
+  <view v-if="!isFinish">
+    <Skeleton></Skeleton>
+  </view>
+  <vk-data-goods-sku-popup
+    v-model="isShowSku"
+    :localdata="localdata"
+    :mode="mode"
+    add-cart-background-color="#FFA868"
+    buy-now-background-color="#27BA9B"
+    ref="skuPopupRef"
+    :actived-style="{
+      color: '#27BA9B',
+      borderColor: '#27BA9B',
+      backgroundColor: '#E9F8F5',
+    }"
+    @add-cart="onAddCart"
+    @buy-now="onBuyNow"
+  />
+  <scroll-view enable-back-to-top scroll-y class="viewport">
     <!-- 基本信息 -->
     <view class="goods">
       <!-- 商品主图 -->
       <view class="preview">
         <swiper @change="onChange" circular>
           <swiper-item v-for="item in goods?.mainPictures" :key="item">
-            <image @tap="onTapImage(item)" mode="aspectFill" :src="item" />
+            <image class="image" @tap="onTapImage(item)" mode="aspectFill" :src="item" />
           </swiper-item>
         </swiper>
         <view class="indicator">
@@ -70,17 +160,16 @@ const openPopup = (name: typeof popupName.value) => {
       <view class="meta">
         <view class="price">
           <text class="symbol">¥</text>
-          <text class="number">29.90</text>
+          <text class="number">{{ goods?.price }}</text>
         </view>
-        <view class="name ellipsis">云珍·轻软旅行长绒棉方巾 </view>
-        <view class="desc"> 轻巧无捻小方巾，旅行便携 </view>
+        <view class="name ellipsis">{{ goods?.name }}</view>
+        <view class="desc"> {{ goods?.desc }} </view>
       </view>
-
       <!-- 操作面板 -->
       <view class="action">
-        <view class="item arrow">
+        <view @tap="openSkuPopup(SkuMode.Both)" class="item arrow">
           <text class="label">选择</text>
-          <text class="text ellipsis"> 请选择商品规格 </text>
+          <text class="text ellipsis"> {{ selectArrText }} </text>
         </view>
         <view @tap="openPopup('address')" class="item arrow">
           <text class="label">送至</text>
@@ -90,10 +179,6 @@ const openPopup = (name: typeof popupName.value) => {
           <text class="label">服务</text>
           <text class="text ellipsis"> 无忧退 快速退款 免费包邮 </text>
         </view>
-        <uni-popup ref="popup" type="bottom" background-color="#fff">
-          <AddressPanel v-if="popupName === 'address'" @close="popup?.close()" />
-          <ServicePanel v-if="popupName === 'service'" @close="popup?.close()" />
-        </uni-popup>
       </view>
     </view>
 
@@ -105,22 +190,21 @@ const openPopup = (name: typeof popupName.value) => {
       <view class="content">
         <view class="properties">
           <!-- 属性详情 -->
-          <view class="item">
-            <text class="label">属性名</text>
-            <text class="value">属性值</text>
-          </view>
-          <view class="item">
-            <text class="label">属性名</text>
-            <text class="value">属性值</text>
+          <view class="item" v-for="item in goods?.details.properties" :key="item.name">
+            <text class="label">{{ item.name }}</text>
+            <text class="value">{{ item.value }}</text>
           </view>
         </view>
         <!-- 图片详情 -->
-        <image mode="widthFix" src="https://yanxuan-item.nosdn.127.net/a8d266886d31f6eb0d7333c815769305.jpg"></image>
-        <image mode="widthFix" src="https://yanxuan-item.nosdn.127.net/a9bee1cb53d72e6cdcda210071cbd46a.jpg"></image>
+        <image
+          class="image"
+          v-for="item in goods?.details.pictures"
+          :key="item"
+          mode="widthFix"
+          :src="item"
+        ></image>
       </view>
     </view>
-
-    <!-- 同类推荐 -->
 
     <!-- 同类推荐 -->
     <view class="similar panel">
@@ -128,8 +212,13 @@ const openPopup = (name: typeof popupName.value) => {
         <text>同类推荐</text>
       </view>
       <view class="content">
-        <navigator v-for="item in goods?.similarProducts" :key="item.id" class="goods" hover-class="none"
-          :url="`/pages/goods/goods?id=${item.id}`">
+        <navigator
+          v-for="item in goods?.similarProducts"
+          :key="item.id"
+          class="goods"
+          hover-class="none"
+          :url="`/pages/goods/goods?id=${item.id}`"
+        >
           <image class="image" mode="aspectFill" :src="item.picture"></image>
           <view class="name ellipsis">{{ item.name }}</view>
           <view class="price">
@@ -142,23 +231,30 @@ const openPopup = (name: typeof popupName.value) => {
   </scroll-view>
 
   <!-- 用户操作 -->
-  <view class="toolbar" :style="{ paddingBottom: safeAreaInsets?.bottom + 'px' }" v-if="isfinish">
+  <view v-if="goods" class="toolbar" :style="{ paddingBottom: safeAreaInsets?.bottom + 'px' }">
     <view class="icons">
       <button class="icons-button"><text class="icon-heart"></text>收藏</button>
+      <!-- #ifdef MP-WEIXIN -->
       <button class="icons-button" open-type="contact">
         <text class="icon-handset"></text>客服
       </button>
-      <navigator class="icons-button" url="/pages/cart/cart" open-type="switchTab">
+      <!-- #endif -->
+      <navigator class="icons-button" url="/pages/cart/cart2" open-type="navigate">
         <text class="icon-cart"></text>购物车
       </navigator>
     </view>
     <view class="buttons">
-      <view class="addcart"> 加入购物车 </view>
-      <view class="buynow"> 立即购买 </view>
+      <view @tap="openSkuPopup(SkuMode.Cart)" class="addcart"> 加入购物车 </view>
+      <view @tap="openSkuPopup(SkuMode.Buy)" class="payment"> 立即购买 </view>
     </view>
   </view>
 
-  <Skeleton v-else></Skeleton>
+  <!-- uni-ui 弹出层 -->
+  <uni-popup ref="popup" type="bottom" background-color="#fff">
+    <AddressPanel v-if="popupName === 'address'" @close="popup?.close()" />
+    <ServicePanel v-if="popupName === 'service'" @close="popup?.close()" />
+  </uni-popup>
+  <!-- SKU弹窗组件 -->
 </template>
 
 <style lang="scss">
@@ -365,7 +461,7 @@ page {
 /* 同类推荐 */
 .similar {
   .content {
-    padding: 0 20rpx 200rpx;
+    padding: 0 20rpx 20rpx;
     background-color: #f4f4f4;
     display: flex;
     flex-wrap: wrap;
@@ -414,11 +510,11 @@ page {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: calc((var(--window-bottom)));
   z-index: 1;
   background-color: #fff;
   height: 100rpx;
-  padding: 0 20rpx var(--window-bottom);
+  padding: 0 20rpx;
   border-top: 1rpx solid #eaeaea;
   display: flex;
   justify-content: space-between;
@@ -428,7 +524,7 @@ page {
   .buttons {
     display: flex;
 
-    &>view {
+    & > view {
       width: 220rpx;
       text-align: center;
       line-height: 72rpx;
@@ -441,7 +537,6 @@ page {
       background-color: #ffa868;
     }
 
-    .buynow,
     .payment {
       background-color: #27ba9b;
       margin-left: 20rpx;
@@ -449,11 +544,13 @@ page {
   }
 
   .icons {
-    padding-right: 10rpx;
+    padding-right: 20rpx;
     display: flex;
     align-items: center;
     flex: 1;
 
+    // 兼容 H5 端和 App 端的导航链接样式
+    .navigator-wrap,
     .icons-button {
       flex: 1;
       text-align: center;
