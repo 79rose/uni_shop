@@ -1,13 +1,21 @@
 <script setup lang="ts">
 //
-import { deleteMemberCartAPI, getMemberCartAPI, putMemberCartBySkuIdAPI } from '@/services/cart'
+import {
+  deleteMemberCartAPI,
+  getMemberCartAPI,
+  putMemberCartBySkuIdAPI,
+  putMemberCartSelectedAPI,
+} from '@/services/cart'
 import type { CartItem } from '@/types/cart'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useMemberStore } from '@/stores'
 import { onShow } from '@dcloudio/uni-app'
 import type { InputNumberBoxEvent } from '@/components/vk-data-input-number-box/vk-data-input-number-box'
 import { useGuessList } from '@/composables'
-
+const onChangeSelected = (item: CartItem) => {
+  item.selected = !item.selected
+  putMemberCartBySkuIdAPI(item.skuId, { selected: item.selected })
+}
 const { myguess, onScrolltolower } = useGuessList()
 //获取当前路由
 const route = getCurrentPages()[getCurrentPages().length - 1].route
@@ -19,7 +27,8 @@ if (route === 'pages/cart/cart') {
 }
 // 修改商品数量
 const onChangeCount = (ev: InputNumberBoxEvent) => {
-  putMemberCartBySkuIdAPI(ev.index, { count: ev.value })
+  console.log(ev)
+  // putMemberCartBySkuIdAPI(ev.skuId, { count: ev.count })
 }
 const memberStore = useMemberStore()
 const cartList = ref<CartItem[]>([])
@@ -33,6 +42,16 @@ const getCartlist = async () => {
 onShow(() => {
   getCartlist()
 })
+const gotoPayment = () => {
+  if (SelectList.value.length === 0) {
+    return uni.showToast({
+      icon: 'none',
+      title: '请选择商品',
+    })
+  }
+  // 跳转到结算页
+  uni.navigateTo({ url: '/pagesOrder/create/create' })
+}
 //删除
 const onDeleteCart = (skuid: string) => {
   uni.showModal({
@@ -45,6 +64,26 @@ const onDeleteCart = (skuid: string) => {
     },
   })
 }
+const isSelectedAll = computed(() => {
+  return cartList.value.length && cartList.value.every((item) => item.selected)
+})
+const onChangeSelectedAll = () => {
+  const _isSelectedAll = !isSelectedAll.value
+  cartList.value.forEach((item) => (item.selected = _isSelectedAll))
+  putMemberCartSelectedAPI({ selected: _isSelectedAll })
+}
+//结算列表
+const SelectList = computed(() => {
+  return cartList.value.filter((item) => item.selected)
+})
+//结算件数
+const SelectCount = computed(() => {
+  return SelectList.value.reduce((sum, item) => sum + item.count, 0)
+})
+//结算金额
+const selectedCartListMoney = computed(() => {
+  return SelectList.value.reduce((sum, item) => sum + item.count * item.nowPrice, 0).toFixed(2)
+})
 </script>
 
 <template>
@@ -65,7 +104,12 @@ const onDeleteCart = (skuid: string) => {
             <!-- 商品信息 -->
             <view class="goods">
               <!-- 选中状态 -->
-              <text class="checkbox" :class="{ checked: true }"></text>
+              <text
+                class="checkbox"
+                :class="{ checked: item.selected }"
+                @tap="onChangeSelected(item)"
+              >
+              </text>
               <navigator
                 :url="`/pages/goods/goods?id=${item.id}`"
                 hover-class="none"
@@ -107,12 +151,22 @@ const onDeleteCart = (skuid: string) => {
         </navigator>
       </view>
       <!-- 吸底工具栏 -->
-      <view class="toolbar" :style="{ bottom: `${safeAreaInsets!.bottom / 2}px` }">
-        <text class="all" :class="{ checked: true }">全选</text>
+      <view
+        class="toolbar"
+        :style="{ bottom: `${safeAreaInsets!.bottom / 2}px` }"
+        @tap="onChangeSelectedAll"
+      >
+        <text class="all" :class="{ checked: isSelectedAll }">全选</text>
         <text class="text">合计:</text>
-        <text class="amount">100</text>
+        <text class="amount">{{ selectedCartListMoney }}</text>
         <view class="button-grounp">
-          <view class="button payment-button" :class="{ disabled: true }"> 去结算(10) </view>
+          <view
+            class="button payment-button"
+            :class="{ disabled: SelectList.length }"
+            @tap="gotoPayment"
+          >
+            去结算({{ SelectCount }})</view
+          >
         </view>
       </view>
     </template>
