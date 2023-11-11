@@ -1,10 +1,19 @@
 <script setup lang="ts">
 //
-import { deleteMemberCartAPI, getMemberCartAPI } from '@/services/cart'
+import { deleteMemberCartAPI, getMemberCartAPI, putMemberCartBySkuIdAPI } from '@/services/cart'
 import type { CartItem } from '@/types/cart'
 import { ref } from 'vue'
 import { useMemberStore } from '@/stores'
 import { onShow } from '@dcloudio/uni-app'
+import type { InputNumberBoxEvent } from '@/components/vk-data-input-number-box/vk-data-input-number-box'
+import { useGuessList } from '@/composables'
+//获取安全距离
+const { safeAreaInsets } = uni.getSystemInfoSync()
+const { myguess, onScrolltolower } = useGuessList()
+// 修改商品数量
+const onChangeCount = (ev: InputNumberBoxEvent) => {
+  putMemberCartBySkuIdAPI(ev.index, { count: ev.value })
+}
 const memberStore = useMemberStore()
 const cartList = ref<CartItem[]>([])
 
@@ -32,7 +41,7 @@ const onDeleteCart = (skuid: string) => {
 </script>
 
 <template>
-  <scroll-view scroll-y class="scroll-view">
+  <scroll-view scroll-y class="scroll-view" @scrolltolower="onScrolltolower">
     <!-- 已登录: 显示购物车 -->
     <template v-if="memberStore.profile">
       <!-- 购物车列表 -->
@@ -64,9 +73,13 @@ const onDeleteCart = (skuid: string) => {
               </navigator>
               <!-- 商品数量 -->
               <view class="count">
-                <text class="text">-</text>
-                <input class="input" type="number" value="1" />
-                <text class="text">+</text>
+                <vk-data-input-number-box
+                  v-model="item.count"
+                  :min="1"
+                  :max="item.stock"
+                  :index="item.skuId"
+                  @change="onChangeCount"
+                />
               </view>
             </view>
             <!-- 右侧删除按钮 -->
@@ -104,7 +117,7 @@ const onDeleteCart = (skuid: string) => {
       </navigator>
     </view>
     <!-- 猜你喜欢 -->
-    <MyGuess ref="guessRef"></MyGuess>
+    <MyGuess ref="myguess"></MyGuess>
     <!-- 底部占位空盒子 -->
     <view class="toolbar-height"></view>
   </scroll-view>
