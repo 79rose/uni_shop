@@ -3,7 +3,13 @@ import { onShow } from '@dcloudio/uni-app'
 import { getMemberAddressAPI, deleteMemberAddressByIdAPI } from '@/services/address'
 import { ref } from 'vue'
 import type { AddressItem } from '@/types/address'
+import { useAddressStore } from '@/stores'
 
+const { setSelectedAdress } = useAddressStore()
+const setAddress = (item: AddressItem) => {
+  setSelectedAdress(item)
+  uni.navigateBack()
+}
 const addressList = ref<AddressItem[]>([])
 const getAddressList = async () => {
   const res = await getMemberAddressAPI()
@@ -34,14 +40,19 @@ const onDeleteAddress = async (id: string) => {
         <view class="address-list">
           <!-- 收货地址项 -->
           <uni-swipe-action class="item" v-for="item in addressList" :key="item.id">
-            <uni-swipe-action-item class="item-content">
+            <uni-swipe-action-item class="item-content" @tap="setAddress(item)">
               <view class="user">
                 {{ item.receiver }}
                 <text class="contact">{{ item.contact }}</text>
                 <text v-if="item.isDefault" class="badge">默认</text>
               </view>
               <view class="locate">{{ item.fullLocation }}</view>
-              <navigator class="edit" hover-class="none" :url="`/pagesMember/address-form/address-form?id=${item.id}`">
+              <navigator
+                class="edit"
+                hover-class="none"
+                :url="`/pagesMember/address-form/address-form?id=${item.id}`"
+                @tap.stop="() => {}"
+              >
                 修改
               </navigator>
               <!-- 右侧插槽 -->
