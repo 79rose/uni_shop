@@ -7,7 +7,7 @@
 			"^uni-(.*)": "@dcloudio/uni-ui/lib/uni-$1/uni-$1.vue",
 			// 以 My 开头的组件，在 components 目录中查找
 			"^My(.*)": "@/components/My$1.vue",
-      "^vk(.*)": "@/components/vk$1/vk$1.vue"
+			"^vk(.*)": "@/components/vk$1/vk$1.vue"
 		}
 	},
 	"pages": [
@@ -34,7 +34,7 @@
 				"navigationBarTitleText": "购物车"
 			}
 		},
-    {
+		{
 			"path": "pages/cart/cart2",
 			"style": {
 				"navigationBarTitleText": "购物车"
@@ -128,10 +128,21 @@
 						"navigationBarTitleText": "地址"
 					}
 				},
-        	{
+				{
 					"path": "address-form/address-form",
 					"style": {
 						"navigationBarTitleText": ""
+					}
+				}
+			]
+		},
+		{
+			"root": "pagesOrder",
+			"pages": [
+				{
+					"path": "create/create",
+					"style": {
+						"navigationBarTitleText": "结算"
 					}
 				}
 			]
@@ -143,6 +154,11 @@
 			"packages": [
 				"pagesMember"
 			]
-		}
+		},
+    "pages/cart/cart": {
+      "network": "all",
+      "packages": [
+        "pagesOrder"
+      ]
 	}
 }
